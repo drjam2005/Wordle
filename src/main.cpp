@@ -18,9 +18,10 @@ struct Word {
 	Word() {}
 
 	void setWord(const char* word) {
-		for(int index = 0; index < strlen(word); ++index){
-			this->word[index] = toupper(word[index]);
+		for(int i = 0; i < WORD_LEN; ++i){
+			this->word[i] = toupper(word[i]);
 		}
+		this->word[WORD_LEN] = '\0';
 	}
 
 	void addChar(char givenChar){
@@ -68,12 +69,17 @@ struct Word {
 
 		return correctness;
 	}
+
+	bool isCorrectGuess(){
+		return (strcmp(word, guess) == 0);
+	}
 };
 
 struct GameState {
 	std::vector<Word> words;
 	char word[WORD_LEN+1];
 	size_t currentWord = 0;
+	bool isDone = false;
 
 	GameState() {
 		words.resize(GUESS_COUNT);
@@ -94,21 +100,34 @@ class Updater {
 public:
 	Updater(GameState& gameState) : gameState(gameState) {}
 	void Update(float dt) {
+		if(gameState.isDone)
+			return;
+
 		Word& currentWord = gameState.words[gameState.currentWord];
 
 		int currentChar = GetKeyPressed();
+
 		if(IsKeyPressed(KEY_ENTER)){
-			if(strlen(currentWord.guess) == strlen(gameState.word)){
+			if(strlen(currentWord.guess) == WORD_LEN){
 				currentWord.checkCorrectness();
-				gameState.currentWord = std::min((int)gameState.currentWord + 1, GUESS_COUNT-1);
+
+				if(currentWord.isCorrectGuess()){
+					gameState.isDone = true;
+					return;
+				}
+
+				if(gameState.currentWord >= GUESS_COUNT - 1){
+					gameState.isDone = true;
+					return;
+				}
+
+				gameState.currentWord++;
 			}
 		}else if(IsKeyPressed(KEY_BACKSPACE)){
 			currentWord.backspace();
 		}else if(currentChar){
 			currentWord.addChar(currentChar);
 		}
-		
-		
 	}
 
 };
@@ -118,37 +137,33 @@ class Renderer {
 public:
 	Renderer(GameState& gameState) : gameState(gameState) {}
 	void Render(float dt) {
-		DrawText(
-				TextFormat("WORD: %s", gameState.word),
-				20, 20, 50, WHITE
-			);
-		DrawText(
-				TextFormat("CURRENTINDEX: %i", gameState.currentWord),
-				20, 80, 50, WHITE
-			);
+		int rowsToRender = gameState.currentWord + 1;
 
-		for(int i = 0; i <= gameState.currentWord; ++i){
-			if(i < gameState.currentWord){
+		for(int i = 0; i < rowsToRender; ++i){
+			bool shouldShowCorrectness =
+				i < gameState.currentWord || gameState.isDone;
+
+			if(shouldShowCorrectness && strlen(gameState.words[i].guess) == WORD_LEN){
 				std::vector<int> correctness = gameState.words[i].checkCorrectness();
-				std::cout << '\n';
+
 				for(int idx = 0; idx < correctness.size(); ++idx){
 					size_t s = correctness[idx];
-					std::cout << s;
+
 					if(s == 1){
-						DrawRectangle(20 + (50*idx), 140+(60*i), 50, 50, GREEN);
+						DrawRectangle(275 + (50*idx), 140+(60*i), 50, 50, GREEN);
 					}else if(s == 2){
-						DrawRectangle(20 + (50*idx), 140+(60*i), 50, 50, YELLOW);
-					}else if(s == 0){
-						DrawRectangle(20 + (50*idx), 140+(60*i), 50, 50, GRAY);
+						DrawRectangle(275 + (50*idx), 140+(60*i), 50, 50, YELLOW);
+					}else{
+						DrawRectangle(275 + (50*idx), 140+(60*i), 50, 50, GRAY);
 					}
 				}
 			}
-			// render word cool way
-			for(int ch = 0 ; ch < strlen(gameState.words[i].guess); ++ch){
+
+			for(int ch = 0; ch < strlen(gameState.words[i].guess); ++ch){
 				DrawText(
-						TextFormat("%c", gameState.words[i].guess[ch]),
-						20 + (50*ch), 140+(60*i), 50, WHITE
-					);
+					TextFormat("%c", gameState.words[i].guess[ch]),
+					275 + (50*ch), 140+(60*i), 50, WHITE
+				);
 			}
 		}
 	}
