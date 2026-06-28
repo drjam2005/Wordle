@@ -1,5 +1,4 @@
 #include <cstddef>
-#include <iostream>
 #include <math.h>
 #include <vector>
 #include <cstring>
@@ -76,20 +75,21 @@ struct Word {
 };
 
 struct GameState {
-	std::vector<Word> words;
+	std::vector<Word> guesses;
 	char word[WORD_LEN+1];
 	size_t currentWord = 0;
 	bool isDone = false;
+	bool isWinner = false;
 
 	GameState() {
-		words.resize(GUESS_COUNT);
+		guesses.resize(GUESS_COUNT);
 		setWord("tests");
 	}
 	void setWord(const char* givenWord){
 		strcpy(this->word, givenWord);
 
 		for(int i = 0; i < GUESS_COUNT; ++i){
-			words[i].setWord(this->word);
+			guesses[i].setWord(this->word);
 		}
 	}
 };
@@ -103,7 +103,7 @@ public:
 		if(gameState.isDone)
 			return;
 
-		Word& currentWord = gameState.words[gameState.currentWord];
+		Word& currentWord = gameState.guesses[gameState.currentWord];
 
 		int currentChar = GetKeyPressed();
 
@@ -113,6 +113,7 @@ public:
 
 				if(currentWord.isCorrectGuess()){
 					gameState.isDone = true;
+					gameState.isWinner = true;
 					return;
 				}
 
@@ -139,32 +140,43 @@ public:
 	void Render(float dt) {
 		int rowsToRender = gameState.currentWord + 1;
 
+		// render the rectangles
+		for(int i = 0; i < GUESS_COUNT; ++i){
+			for(int j = 0; j < WORD_LEN; ++j){
+				DrawRectangle(275-5+(50*j), 140-5+(50*i), 45, 45, WHITE);
+			}
+		}
+
 		for(int i = 0; i < rowsToRender; ++i){
 			bool shouldShowCorrectness =
 				i < gameState.currentWord || gameState.isDone;
 
-			if(shouldShowCorrectness && strlen(gameState.words[i].guess) == WORD_LEN){
-				std::vector<int> correctness = gameState.words[i].checkCorrectness();
+			if(shouldShowCorrectness && strlen(gameState.guesses[i].guess) == WORD_LEN){
+				std::vector<int> correctness = gameState.guesses[i].checkCorrectness();
 
 				for(int idx = 0; idx < correctness.size(); ++idx){
 					size_t s = correctness[idx];
 
 					if(s == 1){
-						DrawRectangle(275 + (50*idx), 140+(60*i), 50, 50, GREEN);
+						DrawRectangle(275-5 + (50*idx), 140-5+(50*i), 45, 45, GREEN);
 					}else if(s == 2){
-						DrawRectangle(275 + (50*idx), 140+(60*i), 50, 50, YELLOW);
+						DrawRectangle(275-5 + (50*idx), 140-5+(50*i), 45, 45, YELLOW);
 					}else{
-						DrawRectangle(275 + (50*idx), 140+(60*i), 50, 50, GRAY);
+						DrawRectangle(275-5 + (50*idx), 140-5+(50*i), 45, 45, GRAY);
 					}
 				}
 			}
 
-			for(int ch = 0; ch < strlen(gameState.words[i].guess); ++ch){
+			for(int ch = 0; ch < strlen(gameState.guesses[i].guess); ++ch){
 				DrawText(
-					TextFormat("%c", gameState.words[i].guess[ch]),
-					275 + (50*ch), 140+(60*i), 50, WHITE
+					TextFormat("%c", gameState.guesses[i].guess[ch]),
+					275 + (50*ch), 140+(50*i), 45, i == gameState.currentWord && !gameState.isDone ? BLACK : WHITE
 				);
 			}
+		}
+
+		if(gameState.isDone && !gameState.isWinner){
+			DrawText("You suck", 20, 20, 20, WHITE);
 		}
 	}
 
